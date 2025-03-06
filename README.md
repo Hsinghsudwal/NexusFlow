@@ -1,7 +1,7 @@
-nexusML : enchanced excutor worker
-flyte : orchestration
-ml_framework-stack : option=cloud,local,mlflow,registe model
-zendro : focus with kedro catalog
+### nexusML : enchanced excutor worker
+### flyte : orchestration
+### ml_framework-stack : option=cloud,local,mlflow,registe model
+### zendro : focus with kedro catalog
 
 This custom MLOps framework combines the structured approach of Kedro with the stack-based architecture of ZenML. Here's an overview of what I've created:
 Core Architecture
