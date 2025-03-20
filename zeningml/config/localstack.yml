@@ -1,0 +1,16 @@
+localstack:
+  enabled: true
+  endpoint: "http://localhost:4566"
+  services:
+    s3: true
+    cloudwatch: true
+    secretsmanager: true
+
+aws:
+  use_localstack: true
+  access_key: "test"
+  secret_key: "test"
+  region: "us-east-1"
+  s3:
+    bucket_name: "ml-artifacts"
+    auto_create_bucket: true

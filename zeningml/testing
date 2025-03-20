@@ -1,0 +1,27 @@
+.
+├── main.py
+├── cli/
+│   └── cli_main.py
+├── components/
+│   └── stacks.py
+├── config/
+│   └── config.yml
+├── core/
+│   ├── step_pipeline.py
+│   ├── config.py
+│   └── artifact_store.py
+├── orchestration/
+│   ├── prefect-option/
+│   │   └── prefect_orchestrator.py
+│   ├── kubeflow-option/
+│   │   └── kubeflow_orchestrator.py
+│   └── airflow-option/
+│       └── airflow_orchestrator.py
+├── integrations/
+│   ├── aws/
+│   │   └── s3.py
+│   └── mlflow/
+│       └── mlflow_tracking.py
+└── src/
+    ├── data_loader.py
+    └── model_trainer.py
