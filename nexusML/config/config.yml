@@ -1,0 +1,63 @@
+data:
+  path: "data/data.csv"
+  test_size: 0.2
+  random_state: 42
+
+model:
+  name: "mlops-model"
+  type: "random_forest"
+  hyperparameters:
+    n_estimators: 100
+    max_depth: 5
+
+feature_store:
+  repo_path: "feature_repo/"
+  feature_views:
+    - customer_features
+    - transaction_features
+
+mlflow:
+  tracking_uri: "http://localhost:5000"
+  registry_uri: "models/"
+
+deployment:
+  host: "0.0.0.0"
+  port: 5001
+  strategy: "blue_green"
+  ingress_name: "model-ingress"
+
+monitoring:
+  report_path: "reports/data_drift.html"
+  metrics:
+    - data_quality
+    - performance
+    - data_drift
+
+ab_testing:
+  split_ratio: 0.5
+  variants:
+    - A
+    - B
+
+shadow_deployment:
+  enabled: true
+  model_path: "models/shadow_model.pkl"
+
+explainability:
+  dashboard_path: "reports/explanations/"
+  sample_size: 1000
+
+kubernetes:
+  enabled: true
+  namespace: "mlops-prod"
+  deployment_name: "model-service"
+  autoscaling:
+    min_replicas: 2
+    max_replicas: 10
+    target_cpu: 80
+
+alerting:
+  slack_webhook: "https://hooks.slack.com/services/TXXXXXX/BXXXXXX/XXXXXXXX"
+  thresholds:
+    data_drift: 0.3
+    error_rate: 0.1

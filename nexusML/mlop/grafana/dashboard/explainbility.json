@@ -1,0 +1,17 @@
+{
+    "dashboard": {
+      "title": "Model Explainability",
+      "panels": [
+        {
+          "type": "graph",
+          "title": "SHAP Feature Importance",
+          "targets": [
+            {
+              "expr": "avg(shap_feature_importance)",
+              "legendFormat": "{{ feature }}"
+            }
+          ]
+        }
+      ]
+    }
+  }

@@ -1,0 +1,46 @@
+5. CI/CD with GitHub Actions
+Now let’s automate the pipeline using GitHub Actions. Below is an example .github/workflows/mlops.yml file for continuous integration and deployment:
+
+# .github/workflows/mlops.yml
+name: MLOps Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  train_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install mlflow scikit-learn flask
+
+      - name: Run model training script
+        run: |
+          python model_training.py
+
+      - name: Build Docker image
+        run: |
+          docker build -t iris_model_api .
+
+      - name: Push Docker image to Docker Hub (Optional)
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker tag iris_model_api yourusername/iris_model_api:latest
+          docker push yourusername/iris_model_api:latest
+
+      - name: Deploy to Server (e.g., AWS ECS)
+        run: |
+          # Add your deployment steps here
+          echo "Deploying model"

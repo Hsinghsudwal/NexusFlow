@@ -1,0 +1,73 @@
+# docker-compose.yml
+version: '3'
+
+services:
+  pipeline:
+    build: .
+    volumes:
+      - ./:/app
+      - pipeline_data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - PIPELINE_ENV=production
+    command: python cli.py -m src.pipelines.example --log-level INFO
+    networks:
+      - pipeline-network
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./:/app
+      - pipeline_data:/app/data
+    depends_on:
+      - pipeline
+    environment:
+      - PYTHONPATH=/app
+    command: streamlit run dashboard.py
+    networks:
+      - pipeline-network
+
+  prometheus:
+    image: prom/prometheus:v2.36.0
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    networks:
+      - pipeline-network
+
+  grafana:
+    image: grafana/grafana:9.0.2
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - pipeline-network
+
+networks:
+  pipeline-network:
+    driver: bridge
+
+volumes:
+  pipeline_data:
+  prometheus_data:
+  grafana_data:

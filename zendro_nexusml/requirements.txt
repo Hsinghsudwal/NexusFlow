@@ -1,0 +1,7 @@
+networkx
+pyyaml
+click
+rich
+numpy
+scikit-learn
+boto3

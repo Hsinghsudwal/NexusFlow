@@ -1,0 +1,135 @@
+# MLOps Customer Churn Prediction System
+
+This document outlines the complete MLOps architecture for a customer churn prediction system using Kubernetes, Kubeflow, Docker, and other technologies to create a robust, scalable pipeline from development to production.
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Kubernetes Cluster                               │
+│  ┌───────────────┐     ┌───────────────┐     ┌───────────────────────┐  │
+│  │ Data Pipeline │     │ Model Pipeline│     │ Serving Infrastructure│  │
+│  │ ┌───────────┐ │     │ ┌───────────┐ │     │ ┌─────────────────┐   │  │
+│  │ │Data Ingest│ │     │ │   Train   │ │     │ │Model Deployment │   │  │
+│  │ └───────────┘ │     │ └───────────┘ │     │ └─────────────────┘   │  │
+│  │ ┌───────────┐ │     │ ┌───────────┐ │     │ ┌─────────────────┐   │  │
+│  │ │ Transform │ │     │ │ Validate  │ │     │ │  Model Serving  │   │  │
+│  │ └───────────┘ │     │ └───────────┘ │     │ └─────────────────┘   │  │
+│  │ ┌───────────┐ │     │ ┌───────────┐ │     │ ┌─────────────────┐   │  │
+│  │ │  Feature  │ │     │ │ Promote   │ │     │ │ API Gateway     │   │  │
+│  │ │   Store   │ │     │ └───────────┘ │     │ └─────────────────┘   │  │
+│  │ └───────────┘ │     │               │     │                       │  │
+│  └───────────────┘     └───────────────┘     └───────────────────────┘  │
+│                                                                          │
+│  ┌───────────────┐     ┌───────────────┐     ┌───────────────────────┐  │
+│  │  Monitoring   │     │   CI/CD       │     │   Data Storage        │  │
+│  │ ┌───────────┐ │     │ ┌───────────┐ │     │ ┌─────────────────┐   │  │
+│  │ │   Model   │ │     │ │  Jenkins  │ │     │ │   PostgreSQL    │   │  │
+│  │ │  Metrics  │ │     │ │  Pipeline │ │     │ └─────────────────┘   │  │
+│  │ └───────────┘ │     │ └───────────┘ │     │ ┌─────────────────┐   │  │
+│  │ ┌───────────┐ │     │ ┌───────────┐ │     │ │    MinIO        │   │  │
+│  │ │  Data     │ │     │ │ ArgoCD    │ │     │ │  (S3 Storage)   │   │  │
+│  │ │  Drift    │ │     │ └───────────┘ │     │ └─────────────────┘   │  │
+│  │ └───────────┘ │     │               │     │                       │  │
+│  └───────────────┘     └───────────────┘     └───────────────────────┘  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## Components
+
+1. **Data Infrastructure**
+   - PostgreSQL for structured customer data
+   - MinIO as S3-compatible object storage for raw data and model artifacts
+   - Feature Store for model features
+
+2. **MLOps Pipeline Components**
+   - Kubeflow Pipelines for orchestration
+   - Data Ingestion, Transformation, and Feature Engineering
+   - Model Training, Validation, and Testing
+   - Model Serving with KServe
+
+3. **CI/CD Pipeline**
+   - Jenkins for CI pipeline
+   - ArgoCD for CD (GitOps)
+   - Docker containers for all components
+
+4. **Monitoring**
+   - Prometheus for metrics collection
+   - Grafana for visualization
+   - Model performance monitoring
+   - Data drift detection
+
+5. **Local Development Environment**
+   - Docker Compose setup
+   - LocalStack for AWS services emulation
+   - Kind/Minikube for local Kubernetes
+
+## Directory Structure
+
+```
+mlops-customer-churn/
+├── data/
+│   ├── raw/                      # Raw customer data
+│   ├── processed/                # Processed datasets
+│   └── features/                 # Extracted features
+├── notebooks/                    # Jupyter notebooks for exploration
+├── src/
+│   ├── data/                     # Data processing scripts
+│   │   ├── ingestion.py
+│   │   ├── validation.py
+│   │   └── transformation.py
+│   ├── features/                 # Feature engineering
+│   │   ├── build_features.py
+│   │   └── feature_store.py
+│   ├── models/                   # Model definitions
+│   │   ├── train.py
+│   │   ├── predict.py
+│   │   ├── evaluate.py
+│   │   └── model.py
+│   └── monitoring/               # Monitoring components
+│       ├── metrics.py
+│       └── drift_detection.py
+├── pipelines/                    # Kubeflow pipeline definitions
+│   ├── training_pipeline.py
+│   ├── batch_inference_pipeline.py
+│   └── retraining_pipeline.py
+├── kubernetes/                   # Kubernetes manifests
+│   ├── data/
+│   │   ├── postgres.yaml
+│   │   └── minio.yaml
+│   ├── mlflow/
+│   │   └── deployment.yaml
+│   ├── kubeflow/
+│   │   └── kfp.yaml
+│   ├── monitoring/
+│   │   ├── prometheus.yaml
+│   │   └── grafana.yaml
+│   └── serving/
+│       └── kserve.yaml
+├── docker/                       # Docker files
+│   ├── data-processing/
+│   │   └── Dockerfile
+│   ├── model-training/
+│   │   └── Dockerfile
+│   ├── model-serving/
+│   │   └── Dockerfile
+│   └── monitoring/
+│       └── Dockerfile
+├── ci-cd/                        # CI/CD configuration
+│   ├── jenkins/
+│   │   ├── Jenkinsfile
+│   │   └── scripts/
+│   └── argocd/
+│       └── applications/
+├── local/                        # Local development
+│   ├── docker-compose.yml
+│   └── localstack/
+│       └── setup.sh
+├── tests/                        # Tests
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── requirements.txt              # Python dependencies
+└── README.md                     # Project documentation
+```

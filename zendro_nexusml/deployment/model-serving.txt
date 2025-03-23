@@ -1,0 +1,95 @@
+# kubernetes/serving/kserve-churn-model.yaml
+apiVersion: "serving.kserve.io/v1beta1"
+kind: "InferenceService"
+metadata:
+  name: "churn-predictor"
+  namespace: "kubeflow"
+  annotations:
+    sidecar.istio.io/inject: "false"
+spec:
+  predictor:
+    sklearn:
+      storageUri: "s3://models/churn-predictor/model/"
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "1Gi"
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: s3-secret
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: s3-secret
+              key: AWS_SECRET_ACCESS_KEY
+        - name: AWS_ENDPOINT_URL
+          value: "http://minio-service.kubeflow.svc.cluster.local:9000"
+      containerConcurrency: 1
+
+---
+# Secret for MinIO/S3 credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s3-secret
+  namespace: kubeflow
+type: Opaque
+data:
+  AWS_ACCESS_KEY_ID: bWluaW8=  # base64 encoded "minio"
+  AWS_SECRET_ACCESS_KEY: bWluaW8xMjM=  # base64 encoded "minio123"
+  
+---
+# Service for model monitoring
+apiVersion: v1
+kind: Service
+metadata:
+  name: churn-model-monitoring
+  namespace: kubeflow
+spec:
+  selector:
+    app: churn-model-monitoring
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: ClusterIP
+
+---
+# Deployment for model monitoring
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: churn-model-monitoring
+  namespace: kubeflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: churn-model-monitoring
+  template:
+    metadata:
+      labels:
+        app: churn-model-monitoring
+    spec:
+      containers:
+      - name: model-monitoring
+        image: ${REGISTRY_URL}/churn-model-monitoring:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PROMETHEUS_PUSHGATEWAY
+          value: "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
+        - name: MODEL_SERVICE_URL
+          value: "http://churn-predictor.kubeflow.svc.cluster.local:80/v1/models/churn-predictor:predict"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
