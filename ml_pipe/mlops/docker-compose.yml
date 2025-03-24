@@ -1,0 +1,69 @@
+# Docker Compose for local development environment
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # Development environment
+  jupyter-dev:
+    build: 
+      context: ./docker/jupyter
+      dockerfile: Dockerfile
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/notebooks
+      - ./data:/home/jovyan/data
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    command: "start-notebook.sh --NotebookApp.token=''"
+
+  # Feature store
+  redis:
+    image: redis:6.2
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+  
+  # Experiment tracking
+  mlflow:
+    build: ./docker/mlflow
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+    volumes:
+      - ./mlruns:/mlruns
+      - ./mlflow.db:/mlflow.db
+  
+  # Model serving
+  fastapi:
+    build: ./docker/fastapi
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app
+    depends_on:
+      - redis
+      - mlflow
+  
+  # Monitoring
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  redis_data:
+  grafana_data:

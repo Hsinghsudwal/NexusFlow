@@ -1,0 +1,110 @@
+# monitoring/prometheus.yml - Prometheus configuration for model monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - "rules/model_alerts.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+  
+  - job_name: 'model-api'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['fastapi:8000']
+    metrics_path: /metrics
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+  
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+---
+# monitoring/rules/model_alerts.yml - Alert rules for model monitoring
+
+groups:
+  - name: model_performance
+    rules:
+      - alert: HighErrorRate
+        expr: rate(prediction_count{status="error"}[5m]) / rate(prediction_count{status="success"}[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High prediction error rate"
+          description: "Model prediction error rate is above 5% for the last 5 minutes"
+      
+      - alert: SlowPredictions
+        expr: histogram_quantile(0.95, rate(prediction_latency_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow model predictions"
+          description: "95th percentile of prediction latency is above 0.5 seconds"
+      
+      - alert: HighFeatureDrift
+        expr: rate(feature_drift_count[1h]) > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High feature drift detected"
+          description: "More than 10 feature drifts detected per hour"
+      
+      - alert: PredictionVolumeDropped
+        expr: rate(prediction_count{status="success"}[5m]) < 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low prediction volume"
+          description: "Prediction volume has dropped below normal levels"
+
+---
+# monitoring/alertmanager.yml - AlertManager configuration
+
+global:
+  resolve_timeout: 5m
+  slack_api_url: 'https://hooks.slack.com/services/XXXXXX/YYYYY/ZZZZZZ'
+
+route:
+  group_by: ['alertname', 'job']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'team-ml-engineers'
+  routes:
+  - match:
+      severity: critical
+    receiver: 'team-ml-engineers-pager'
+
+receivers:
+- name: 'team-ml-engineers'
+  slack_configs:
+  - channel: '#ml-model-alerts'
+    send_resolved: true
+    title: "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}"
+    text: "{{ range .Alerts }}{{ .Annotations.description }}\n{{ end }}"
+
+- name: 'team-ml-engineers-pager'
+  pagerduty_configs:
+  - service_key: 'your_pagerduty_service_key'
+    description: '{{ .CommonAnnotations.summary }}'
+    client: 'prometheus-alertmanager'
+    client_url: 'https://prometheus.example.com'
+    details:
+      firing: '{{ template "pagerduty.default.instances" .Alerts.Firing }}'
+
