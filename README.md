@@ -5,14 +5,13 @@ This nexusFlow MLOps framework.
 
 ### Core Architecture
 
-Function- passes input and return outputs
-Pipeline Construction: Pipelines are created by connecting Function together
-Config: Handles inputs
-Artifacts_store: Handle output storage
-Execution Context: Provides the environment for pipeline execution
-MLOps Stack: Integrates various MLOps components
+- Function- passes input and return outputs
+- Pipeline Construction: Pipelines are created by connecting Function together
+- Config: Handles inputs
+- Artifacts_store: Handle output storage
+- Execution Context: Provides the environment for pipeline execution
 
-### MLOps Stack Components
+## MLOps Stack: Integrates various MLOps components
 
 This framework includes a modular stack system with components like:
 
