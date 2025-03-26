@@ -1,7 +1,7 @@
 
-## Nexusflow : orchestration, option=cloud,local,mlflow,registe model, enchanced excutor: sequential-parallel
+## NexusFlow : orchestration, option=cloud,local,mlflow,registe model, enchanced excutor: sequential-parallel
 
-This nexusflow MLOps framework.
+This nexusFlow MLOps framework.
 
 ### Core Architecture
 
