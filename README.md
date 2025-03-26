@@ -1,7 +1,7 @@
 
-## NexusFlow : orchestration, option=cloud,local,mlflow,registe model, enchanced excutor: sequential-parallel
+## Nexusflow : orchestration, option=cloud,local,mlflow,registe model, enchanced excutor: sequential-parallel
 
-This NexusFlow MLOps framework.
+This nexusflow MLOps framework.
 
 ### Core Architecture
 
@@ -14,7 +14,7 @@ MLOps Stack: Integrates various MLOps components
 
 ### MLOps Stack Components
 
-The framework includes a modular stack system with components for:
+This framework includes a modular stack system with components like:
 
 - Experiment Tracking: Integration with MLflow for metrics and parameters
 - Model Registry: Version control for ML models
