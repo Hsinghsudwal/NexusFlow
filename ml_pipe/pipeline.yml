@@ -1,0 +1,23 @@
+name: ml_pipeline
+steps:
+  - name: load_data
+    module: steps.load_data
+    function: load_data
+    parameters:
+      data_path: "data/raw/data.csv"
+  - name: preprocess_data
+    module: steps.preprocess_data
+    function: preprocess_data
+    parameters:
+      input_data: "{{ load_data.output }}"
+  - name: train_model
+    module: steps.train_model
+    function: train_model
+    parameters:
+      input_data: "{{ preprocess_data.output }}"
+  - name: evaluate_model
+    module: steps.evaluate_model
+    function: evaluate_model
+    parameters:
+      model: "{{ train_model.output }}"
+      test_data: "{{ preprocess_data.output }}"
