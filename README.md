@@ -1,7 +1,7 @@
 
-## NexxusFlow : orchestration, option=cloud,local,mlflow,registe model, enchanced excutor: sequential-parallel
+## NexStream : orchestration, option=cloud,local,mlflow,registe model, enchanced excutor: sequential-parallel
 
-This nexxusFlow MLOps framework.
+This nexstream MLOps framework.
 
 ### Core Architecture
 

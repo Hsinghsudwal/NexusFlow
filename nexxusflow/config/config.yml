@@ -1,6 +1,0 @@
-mode: local
-artifact_store:
-  local_path: ./artifacts
-metadata_store:
-  type: sqlite
-  path: ./metadata.db
