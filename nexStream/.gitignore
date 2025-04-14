@@ -1,0 +1,88 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# ML specific
+*.h5
+*.pkl
+*.joblib
+*.model
+*.bin
+models/
+checkpoints/
+runs/
+logs/
+wandb/
+
+# Data
+data/raw/
+data/processed/
+data/interim/
+*.csv
+*.json
+*.parquet
+*.feather
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+mlruns/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# DVC
+/data
+/models
+.dvc/tmp
+.dvc/cache
