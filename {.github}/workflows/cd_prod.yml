@@ -1,0 +1,254 @@
+name: CD Production Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      approval_ticket:
+        description: 'Approval ticket reference'
+        required: true
+      approved_by:
+        description: 'Approver name'
+        required: true
+
+jobs:
+  validate-approvals:
+    name: Validate Governance Approvals
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+      
+      - name: Validate approval ticket
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          python -m src._.core.audit \
+            --action validate_approval \
+            --ticket "${{ github.event.inputs.approval_ticket }}" \
+            --approver "${{ github.event.inputs.approved_by }}" \
+            --environment production
+        env:
+          GOVERNANCE_API_KEY: ${{ secrets.GOVERNANCE_API_KEY }}
+          GOVERNANCE_API_URL: ${{ secrets.GOVERNANCE_API_URL }}
+  
+  prepare-production-deployment:
+    name: Prepare Production Deployment
+    runs-on: ubuntu-latest
+    needs: [validate-approvals]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Set up environment variables
+        run: |
+          echo "ECR_REPOSITORY=${{ steps.login-ecr.outputs.registry }}/mlops-prod" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
+  
+  security-vulnerability-scan:
+    name: Production Security Scan
+    runs-on: ubuntu-latest
+    needs: [prepare-production-deployment]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit safety
+      
+      - name: Run enhanced security scan
+        run: |
+          python -m security.scanning.vulnerability_scan \
+            --environment production \
+            --scan-type full \
+            --output-format sarif
+        env:
+          SECURITY_SCAN_API_KEY: ${{ secrets.SECURITY_SCAN_API_KEY }}
+      
+      - name: Upload security scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: security_scan_results.sarif
+  
+  build-production-image:
+    name: Build and Push Production Image
+    runs-on: ubuntu-latest
+    needs: [security-vulnerability-scan]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Build and push production image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/inference/Dockerfile
+          push: true
+          tags: ${{ env.ECR_REPOSITORY }}/serving:${{ env.IMAGE_TAG }}
+          build-args: |
+            ENVIRONMENT=prod
+            BUILD_ID=${{ github.run_id }}
+            COMMIT_SHA=${{ github.sha }}
+  
+  promote-model-to-production:
+    name: Promote Model to Production
+    runs-on: ubuntu-latest
+    needs: [build-production-image]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mlflow boto3
+          pip install -r requirements.txt
+      
+      - name: Promote model in registry
+        run: |
+          python -m src.models.registry.promotion \
+            --environment prod \
+            --model-name ${{ github.repository }} \
+            --run-id ${{ github.run_id }} \
+            --commit-sha ${{ github.sha }} \
+            --approval-ticket "${{ github.event.inputs.approval_ticket }}"
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  
+  blue-green-deployment:
+    name: Blue-Green Deployment
+    runs-on: ubuntu-latest
+    needs: [promote-model-to-production]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+      
+      - name: Set kubernetes context
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ env.KUBECONFIG }}
+          context: ${{ secrets.EKS_CLUSTER_NAME }}
+      
+      - name: Prepare blue-green deployment
+        run: |
+          # Update the deployment manifests with the new image
+          sed -i "s|image:.*|image: ${{ env.ECR_REPOSITORY }}/serving:${{ env.IMAGE_TAG }}|g" infra/kubernetes/serving/deployment.yaml
+          
+          # Deploy new version (green)
+          kubectl apply -f infra/kubernetes/serving/deployment.yaml -n prod-green
+      
+      - name: Verify green deployment
+        run: |
+          kubectl rollout status deployment/mlops-model-serving -n prod-green
+      
+      - name: Run canary tests on green deployment
+        run: |
+          python -m tests.e2e.canary_test \
+            --endpoint ${{ secrets.PROD_GREEN_API_ENDPOINT }} \
+            --test-percentage 10
+        env:
+          TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
+      
+      - name: Switch traffic to green deployment
+        run: |
+          kubectl apply -f infra/kubernetes/serving/service.yaml -n prod
+      
+      - name: Audit deployment
+        run: |
+          python -m src._.core.audit \
+            --action record_deployment \
+            --environment production \
+            --deployment-id ${{ github.run_id }} \
+            --image ${{ env.ECR_REPOSITORY }}/serving:${{ env.IMAGE_TAG }} \
+            --approval-ticket "${{ github.event.inputs.approval_ticket }}" \
+            --approved-by "${{ github.event.inputs.approved_by }}"
+        env:
+          AUDIT_API_KEY: ${{ secrets.AUDIT_API_KEY }}
+  
+  setup-production-monitoring:
+    name: Set Up Production Monitoring
+    runs-on: ubuntu-latest
+    needs: [blue-green-deployment]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+          pip install -r requirements.txt
+      
+      - name: Configure production monitoring
+        run: |
+          python -m src.monitoring.alerting.configure_alerts \
+            --environment prod \
+            --deployment-id ${{ github.run_id }} \
+            --strict-thresholds
+        env:
+          PROMETHEUS_URL: ${{ secrets.PROD_PROMETHEUS_URL }}
+          ALERTMANAGER_URL: ${{ secrets.PROD_ALERTMANAGER_URL }}
