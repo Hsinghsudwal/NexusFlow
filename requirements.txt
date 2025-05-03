@@ -1,0 +1,16 @@
+pandas
+numpy
+scikit-learn
+matplotlib
+seaborn
+flask
+fastapi
+uvicorn
+gunicorn
+mlflow
+scipy
+pyyaml
+
+black
+pylint
+flack8
