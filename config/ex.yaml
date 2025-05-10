@@ -1,0 +1,30 @@
+# Configuration
+project_name: "project name"
+author: "Harinder Singh Sudwal"
+
+# Artifact store configuration
+storage_type: local # Options: "local", "cloud", "localstack"
+
+# Base configuration
+base:
+  pipeline_name: "my_pipeline"
+  test_size: 0.2
+  target_column: "churn" 
+  id_columns: ["customer_id"]
+  random_state: 42
+  
+
+
+# Data configuration
+artifact_path:
+  path: data
+  raw_path: "raw"
+  train: "train.csv"
+  test: "test.csv"
+  # data_transformer:
+  transform_path: "transformer"
+  transformer: "transformer.pkl"
+  xtrain: "xtrain.csv"
+  xtest: "xtest.csv"
+  ytrain: "ytrain.csv"
+  ytest: "ytest.csv"
