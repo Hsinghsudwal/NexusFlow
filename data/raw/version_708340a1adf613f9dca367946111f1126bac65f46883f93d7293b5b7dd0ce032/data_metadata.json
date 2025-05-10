@@ -1,0 +1,153 @@
+{
+    "timestamp": "20250509_174433",
+    "source": "data/external/sample.csv",
+    "hash": "708340a1adf613f9dca367946111f1126bac65f46883f93d7293b5b7dd0ce032",
+    "shape": [
+        200,
+        10
+    ],
+    "columns": [
+        "customer_id",
+        "gender",
+        "age",
+        "tenure",
+        "balance",
+        "products",
+        "has_cr_card",
+        "is_active_member",
+        "estimated_salary",
+        "churn"
+    ],
+    "dtypes": {
+        "customer_id": "object",
+        "gender": "object",
+        "age": "int64",
+        "tenure": "int64",
+        "balance": "float64",
+        "products": "int64",
+        "has_cr_card": "int64",
+        "is_active_member": "int64",
+        "estimated_salary": "float64",
+        "churn": "int64"
+    },
+    "missing_values": {
+        "customer_id": 0,
+        "gender": 0,
+        "age": 0,
+        "tenure": 0,
+        "balance": 0,
+        "products": 0,
+        "has_cr_card": 0,
+        "is_active_member": 0,
+        "estimated_salary": 0,
+        "churn": 0
+    },
+    "missing_percentages": {
+        "customer_id": 0.0,
+        "gender": 0.0,
+        "age": 0.0,
+        "tenure": 0.0,
+        "balance": 0.0,
+        "products": 0.0,
+        "has_cr_card": 0.0,
+        "is_active_member": 0.0,
+        "estimated_salary": 0.0,
+        "churn": 0.0
+    },
+    "numeric_stats": {
+        "age": {
+            "count": 200.0,
+            "mean": 44.405,
+            "std": 15.353816247657589,
+            "min": 18.0,
+            "25%": 32.75,
+            "50%": 46.0,
+            "75%": 56.0,
+            "max": 69.0
+        },
+        "tenure": {
+            "count": 200.0,
+            "mean": 4.52,
+            "std": 3.0472988285945584,
+            "min": 0.0,
+            "25%": 2.0,
+            "50%": 4.0,
+            "75%": 7.0,
+            "max": 9.0
+        },
+        "balance": {
+            "count": 200.0,
+            "mean": 101831.185,
+            "std": 56550.539085250464,
+            "min": 2734.39,
+            "25%": 52888.177500000005,
+            "50%": 103692.845,
+            "75%": 149110.66249999998,
+            "max": 199186.25
+        },
+        "products": {
+            "count": 200.0,
+            "mean": 2.02,
+            "std": 0.8017568648610118,
+            "min": 1.0,
+            "25%": 1.0,
+            "50%": 2.0,
+            "75%": 3.0,
+            "max": 3.0
+        },
+        "has_cr_card": {
+            "count": 200.0,
+            "mean": 0.49,
+            "std": 0.5011544461485624,
+            "min": 0.0,
+            "25%": 0.0,
+            "50%": 0.0,
+            "75%": 1.0,
+            "max": 1.0
+        },
+        "is_active_member": {
+            "count": 200.0,
+            "mean": 0.455,
+            "std": 0.49922049790412065,
+            "min": 0.0,
+            "25%": 0.0,
+            "50%": 0.0,
+            "75%": 1.0,
+            "max": 1.0
+        },
+        "estimated_salary": {
+            "count": 200.0,
+            "mean": 61230.876500000006,
+            "std": 23454.140640578906,
+            "min": 20019.0,
+            "25%": 41524.6425,
+            "50%": 61749.41,
+            "75%": 80040.14499999999,
+            "max": 99948.28
+        },
+        "churn": {
+            "count": 200.0,
+            "mean": 0.49,
+            "std": 0.5011544461485624,
+            "min": 0.0,
+            "25%": 0.0,
+            "50%": 0.0,
+            "75%": 1.0,
+            "max": 1.0
+        }
+    },
+    "version_id": "version_20250509_174433_708340a1",
+    "data_hash": "708340a1adf613f9dca367946111f1126bac65f46883f93d7293b5b7dd0ce032",
+    "split_ratio": {
+        "train": 0.8,
+        "test": 0.2
+    },
+    "train_shape": [
+        160,
+        10
+    ],
+    "test_shape": [
+        40,
+        10
+    ]
+}
