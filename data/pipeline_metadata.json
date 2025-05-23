@@ -1,0 +1,18 @@
+{
+    "pipeline_id": "b998b72a-13cd-4784-bd34-938c2eb7970a",
+    "pipeline_name": "my_pipeline",
+    "local_model_name": "lasso",
+    "prod_model_name": "lasso_AutoML",
+    "model_version": "8",
+    "is promoted": true,
+    "stage": "Production",
+    "status": "SUCCESS",
+    "artifact_path": "data",
+    "metrics": {
+        "rmse": 7.996701926157997,
+        "mae": 6.7511126330032685,
+        "r2": -0.00638843500729136,
+        "explained_variance": 0.0
+    },
+    "timestamp": "2025-05-23T05:04:37.076468"
+}
