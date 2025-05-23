@@ -13,7 +13,7 @@ def model_staging(config_file, results):
     # Get MLflow configuration
     tracking_uri = config.get("mlflow_config", {}).get("mlflow_tracking_uri")
     remote_server_uri = config.get("mlflow_config", {}).get("remote_server_uri")
-    staging_stage = config.get("mlflow_config", {}).get("stage", {})
+    staging_stage = config.get("mlflow_config", {}).get("staging_stage", {})
 
     # Set tracking URI - prioritize remote_server_uri if available
     active_uri = remote_server_uri if remote_server_uri else tracking_uri

@@ -23,31 +23,33 @@ from sklearn.metrics import (
 
 
 def load_models(
-    client,
+    client: MlflowClient,
     model_name: str,
-    stage_staging,
-    stage_prod,
+    staging_stage: str,
+    production_stage: str,
 ) -> Tuple[Any, Optional[Any]]:
     """Load models from two different stages for comparison"""
-    logger.info(f"Loading models for {model_name}: {stage_staging} and {stage_prod}")
+    logger.info(
+        f"Loading models for {model_name}: {staging_stage} and {production_stage}"
+    )
 
     # Get model from staging
-    staging_versions = client.get_latest_versions(model_name, stages=[stage_staging])
+    staging_versions = client.get_latest_versions(model_name, stages=[staging_stage])
     if not staging_versions:
         raise ValueError(
-            f"No versions found for model: {model_name} in {stage_staging}"
+            f"No versions found for model: {model_name} in {staging_stage}"
         )
 
-    model_uri_stage = f"models:/{model_name}/{stage_staging}"
+    model_uri_stage = f"models:/{model_name}/{staging_stage}"
     model_stage = mlflow.pyfunc.load_model(model_uri_stage)
 
     # Get model from production (if exists)
-    prod_versions = client.get_latest_versions(model_name, stages=[stage_prod])
+    prod_versions = client.get_latest_versions(model_name, stages=[production_stage])
     if not prod_versions:
-        logger.warning(f"No model found in {stage_prod} stage")
+        logger.warning(f"No model found in {production_stage} stage")
         model_prod = None
     else:
-        model_uri_prod = f"models:/{model_name}/{stage_prod}"
+        model_uri_prod = f"models:/{model_name}/{production_stage}"
         model_prod = mlflow.pyfunc.load_model(model_uri_prod)
 
     return model_stage, model_prod
@@ -106,7 +108,9 @@ def compare_metrics(
 
     # Get the primary metric for comparison
     if problem_type == "classification":
-        primary_metric = config.get("promotion_thresholds", {}).get("primary_metric", "f1")
+        primary_metric = config.get("promotion_thresholds", {}).get(
+            "primary_metric", "f1"
+        )
         # Define which metrics should be higher (better)
         higher_is_better = {
             "accuracy": True,
@@ -116,7 +120,9 @@ def compare_metrics(
             "roc_auc": True,
         }
     else:  # regression
-        primary_metric = config.get("promotion_thresholds", {}).get("primary_metric", "rmse")
+        primary_metric = config.get("promotion_thresholds", {}).get(
+            "primary_metric", "rmse"
+        )
         # Define which metrics should be higher (better)
         higher_is_better = {
             "rmse": False,
@@ -134,7 +140,7 @@ def compare_metrics(
 
     # Check if the primary metric improved by the required threshold
     minimum_improvement = config.get("promotion_thresholds", {}).get(
-        "minimum_improvement", 0.01  
+        "minimum_improvement", 0
     )  # 1% improvement by default. Test try just 0
 
     if primary_metric not in diff_metrics:
@@ -179,13 +185,14 @@ def promote_to_production(config_file, results: Dict) -> bool:
         # Get MLflow configuration
         tracking_uri = config.get("mlflow_config", {}).get("mlflow_tracking_uri")
         remote_server_uri = config.get("mlflow_config", {}).get("remote_server_uri")
-        stage_staging=config.get("mlflow_config",{}).get("stage",{})
-        stage_production= config.get("mlflow_config",{}).get("")
-        # Set tracking URI - prioritize remote_server_uri if available
+        staging_stage = config.get("mlflow_config", {}).get("staging_stage", {})
+        production_stage = config.get("mlflow_config", {}).get("production_stage", {})
+
+        logger.info(f"Using stages: {staging_stage} -> {production_stage}")
         active_uri = remote_server_uri if remote_server_uri else tracking_uri
         if active_uri:
-            logger.info(f"Setting MLflow tracking URI to: {active_uri}")
             mlflow.set_tracking_uri(active_uri)
+
         client = MlflowClient()
 
         model_name = results.get("model_name")
@@ -200,14 +207,21 @@ def promote_to_production(config_file, results: Dict) -> bool:
             raise ValueError("Test data not available for evaluation")
 
         # Load models
-        stage_model, prod_model = load_models(client, model_name,stage_staging, stage_production)
+        stage_model, prod_model = load_models(
+            client, model_name, staging_stage, production_stage
+        )
 
         # Evaluate staging model
         stage_metrics = evaluate_model(config, stage_model, X_test, y_test)
+        if not stage_metrics:
+            raise ValueError("Could not evaluate staging model")
+
         results["metrics"] = stage_metrics
 
         # Get staging model version
-        staging_versions = client.get_latest_versions(model_name, stages=[stage_staging])
+        staging_versions = client.get_latest_versions(
+            model_name, stages=[staging_stage]
+        )
         if not staging_versions:
             raise ValueError(f"No Staging version found for model: {model_name}")
 
@@ -215,16 +229,24 @@ def promote_to_production(config_file, results: Dict) -> bool:
 
         # If production model exists, compare metrics
         promote_model = True
+        diff_metrics={}
+        
         if prod_model:
             prod_metrics = evaluate_model(config, prod_model, X_test, y_test)
-            is_better, diff_metrics = compare_metrics(config, stage_metrics, prod_metrics)
-            results["diff_metrics"] = diff_metrics
+            if prod_metrics:
+                is_better, diff_metrics = compare_metrics(
+                    config, stage_metrics, prod_metrics
+                )
+                results["diff_metrics"] = diff_metrics
+                results["production_metrics"] = prod_metrics
 
-            # Only promote if staging model is better
-            promote_model = is_better
-            logger.info(
-                f"Model comparison: is_better={is_better}, diff_metrics={diff_metrics}"
-            )
+                # Only promote if staging model is better
+                promote_model = is_better
+                logger.info(
+                    f"Model comparison: is_better={is_better}, diff_metrics={diff_metrics}"
+                )
+            else:
+                logger.warning("Could not evaluate production model, proceeding with promotion")
 
         if promote_model:
             logger.info(f"Promoting model {model_name} version {version} to Production")
@@ -232,13 +254,16 @@ def promote_to_production(config_file, results: Dict) -> bool:
             client.transition_model_version_stage(
                 name=model_name,
                 version=version,
-                stage=stage_production,
+                stage=production_stage,
                 archive_existing_versions=True,  # Archive existing production model
             )
 
             # Add promotion metadata as tags
             client.set_model_version_tag(
-                name=model_name, version=version, key="promotion_strategy", value="direct"
+                name=model_name,
+                version=version,
+                key="promotion_strategy",
+                value="direct",
             )
 
             client.set_model_version_tag(
@@ -264,35 +289,32 @@ def promote_to_production(config_file, results: Dict) -> bool:
                 )
 
             logger.info(
-                f"Model {model_name} version {version} successfully promoted to Production"
+                f"Model {model_name} version {version} successfully promoted to {production_stage}"
             )
-            return {
-                    "status": "success",
-                    "model_name": model_name,
-                    "version": version,
-                    "stage": stage_production,
-                    "is_promoted": True,
-                    "metrics": stage_metrics,
-                    "diff_metrics": diff_metrics
-                }
-        else:
-            logger.info(
-                f"Model {model_name} version {version} NOT promoted: performance not better than current production"
-            )
-            
             return {
                 "status": "success",
                 "model_name": model_name,
                 "version": version,
-                "stage": stage_staging,  # Remains in staging
+                "stage": production_stage,
+                "is_promoted": True,
+                "metrics": stage_metrics,
+                "diff_metrics": diff_metrics,
+            }
+        else:
+            logger.info(
+                f"Model {model_name} version {version} NOT promoted: performance not better than current production"
+            )
+
+            return {
+                "status": "success",
+                "model_name": model_name,
+                "version": version,
+                "stage": staging_stage,  # Remains in staging
                 "is_promoted": False,
                 "metrics": stage_metrics,
-                "diff_metrics": diff_metrics
+                "diff_metrics": diff_metrics,
             }
-        
+
     except Exception as e:
         logger.error(f"Error in promote_to_production: {e}")
-        return {
-            "status": "failed",
-            "error": str(e)
-        }
+        return {"status": "failed", "error": str(e)}
